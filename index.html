@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novashelf - Thư viện số</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Be Vietnam Pro -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #0b1120;
+            color: #f1f5f9;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        /* Clean Rectangle Room Box with Border */
+        .room-card {
+            position: relative;
+            border: 3px solid #ff4d6d;
+            border-radius: 16px;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        /* Highlight room when player is near */
+        .room-near {
+            border-color: #4ade80 !important;
+            box-shadow: 0 0 25px rgba(74, 222, 128, 0.5) !important;
+            transform: scale(1.02);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        /* Player Avatar */
+        #character-avatar {
+            position: absolute;
+            width: 44px;
+            height: 56px;
+            z-index: 30;
+            transition: left 0.1s linear, top 0.1s linear;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Interact Prompt Badge */
+        .interact-badge {
+            animation: pulse-glow 1s infinite alternate;
+        }
+        @keyframes pulse-glow {
+            0% { transform: scale(1); box-shadow: 0 0 10px rgba(250, 204, 21, 0.6); }
+            100% { transform: scale(1.08); box-shadow: 0 0 20px rgba(250, 204, 21, 0.9); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- 1. AUTH LOGIN / REGISTER MODAL (OPEN BY DEFAULT) -->
+    <div id="auth-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full rounded-2xl p-6 md:p-8 border border-slate-700 shadow-2xl">
+            <div class="text-center mb-6">
+                <div class="w-14 h-14 bg-rose-500/20 border border-rose-500/40 rounded-2xl flex items-center justify-center mx-auto mb-3 text-rose-400 text-2xl">
+                    <i class="fa-solid fa-book-open-reader"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-white">Novashelf</h2>
+                <p class="text-xs text-slate-400 mt-1">Đăng nhập tài khoản để tích lũy chuỗi Streak đọc sách</p>
+            </div>
+
+            <form onsubmit="handleAuthSubmit(event)" class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Họ và Tên *</label>
+                    <input type="text" id="auth-name" required placeholder="Ví dụ: Bùi Thị Quý" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-rose-500 text-sm">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Lớp *</label>
+                    <input type="text" id="auth-class" required placeholder="Ví dụ:11A4" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-rose-500 text-sm">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Mật khẩu tài khoản *</label>
+                    <input type="password" id="auth-pass" required placeholder="Nhập mật khẩu riêng của bạn" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-rose-500 text-sm">
+                </div>
+
+                <button type="submit" class="w-full py-3 rounded-xl font-bold bg-rose-600 hover:bg-rose-500 text-white text-sm transition shadow-lg mt-2">
+                    Tiếp Tục ➔
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. DAILY READING SURVEY MODAL -->
+    <div id="survey-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full rounded-2xl p-6 md:p-8 border border-slate-700 shadow-2xl">
+            <div class="text-center mb-5">
+                <div class="w-12 h-12 bg-amber-500/20 border border-amber-500/40 rounded-2xl flex items-center justify-center mx-auto mb-2 text-amber-400 text-xl">
+                    <i class="fa-solid fa-compass"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white">Cùng đọc sách thôi nào!</h3>
+                <p class="text-xs text-slate-400 mt-1">Hãy để chúng tôi mang đến những cuốn sách phù hợp cho bạn nhất nhé!</p>
+            </div>
+
+            <form onsubmit="handleSurveySubmit(event)" class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Hôm nay bạn muốn đọc thể loại sách nào?</label>
+                    <select id="survey-interest" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 text-sm">
+                        <option value="Văn Học việt Nam">📖 Văn Học Việt Nam & Tác Phẩm Kinh Điển</option>
+                        <option value="Khoa Học & Thiên Văn">🚀 Khoa Học, Thiên Văn & Vũ Trụ</option>
+                        <option value="Ngoại Ngữ">🌍 Ngoại Ngữ</option>
+                        <option value="Kỹ Năng Sống">🌱 Kỹ Năng Sống & Phát Triển Bản Thân</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Mục đích đọc sách của bạn hôm nay là gì?</label>
+                    <select id="survey-goal" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 text-sm">
+                        <option value="Giải trí sau giờ học">☕ Giải trí & thư giãn sau giờ học</option>
+                        <option value="Học tập & Mở rộng kiến thức">📚 Phục vụ bài học & học tập</option>
+                        <option value="Rèn luyện kỹ năng mềm">💡 Rèn luyện kỹ năng mềm & tư duy</option>
+                        <option value="Thử thách tích lũy Streak 15 phút">🔥 Thử thách duy trì Streak 15 phút</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full py-3 rounded-xl font-bold bg-amber-600 hover:bg-amber-500 text-white text-sm transition shadow-lg mt-2">
+                    Vào Thư Viện 🚀
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOP NAVBAR -->
+    <header class="bg-[#0c1322] border-b border-slate-800 px-4 py-3 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            
+            <!-- Left Badges -->
+            <div class="flex items-center gap-3">
+                <div class="bg-slate-900/90 border border-slate-700/80 hover:border-blue-500/50 rounded-full px-4 py-1.5 flex items-center gap-2 text-sm font-semibold text-slate-200 shadow-md">
+                    <span class="text-base">👤</span>
+                    <span id="user-display-name">Đang tải...</span>
+                </div>
+
+                <div class="bg-slate-900/90 border border-slate-700/80 rounded-full px-4 py-1.5 flex items-center gap-2 text-sm font-bold text-orange-400 shadow-md">
+                    <span>🔥</span>
+                    <span>Streak: <span id="user-streak">1</span> Ngày</span>
+                </div>
+            </div>
+
+            <!-- Right Action Buttons -->
+            <div class="flex items-center flex-wrap gap-2 text-xs sm:text-sm">
+                <!-- Select Character Button -->
+                <button onclick="openModal('char-modal')" class="bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-2 font-medium transition shadow">
+                    <i class="fa-solid fa-user-gear text-purple-400"></i>
+                    <span>Nhân vật</span>
+                </button>
+
+                <!-- Leaderboard Button -->
+                <button onclick="openLeaderboard()" class="bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-2 font-medium transition shadow">
+                    <i class="fa-solid fa-trophy text-amber-400"></i>
+                    <span>Xếp hạng</span>
+                </button>
+
+                <!-- Admin Add/Edit Room Button (Visible only to Admin) -->
+                <button id="admin-manage-rooms-btn" onclick="openModal('room-manager-modal')" class="hidden bg-emerald-800/90 hover:bg-emerald-700 border border-emerald-600 text-emerald-200 px-3 py-1.5 rounded-lg flex items-center gap-2 font-bold transition shadow">
+                    <i class="fa-solid fa-square-plus text-emerald-300"></i>
+                    <span>➕ Thêm / Chỉnh Phòng</span>
+                </button>
+
+                <!-- Chat AI / Community -->
+                <button onclick="openModal('chat-modal')" class="bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-2 font-medium transition shadow">
+                    <i class="fa-solid fa-comments text-blue-400"></i>
+                    <span>Trò chuyện</span>
+                </button>
+
+                <!-- Suggest Book -->
+                <button onclick="openModal('suggest-modal')" class="bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-2 font-medium transition shadow">
+                    <i class="fa-solid fa-plus text-emerald-400"></i>
+                    <span>Đề xuất sách</span>
+                </button>
+
+                <!-- Admin Button -->
+                <button id="admin-btn" onclick="handleAdminClick()" class="bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-2 font-medium transition shadow">
+                    <i id="admin-icon" class="fa-solid fa-gear text-slate-400"></i>
+                    <span id="admin-status-text">Admin</span>
+                </button>
+
+                <!-- Fullscreen Button -->
+                <button onclick="toggleFullScreen()" class="bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-2 font-medium transition shadow">
+                    <i class="fa-solid fa-tv text-cyan-400"></i>
+                    <span>Toàn màn hình</span>
+                </button>
+
+                <!-- Logout Button -->
+                <button onclick="logout()" class="bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-2 font-medium transition shadow">
+                    <i class="fa-solid fa-door-open text-rose-400"></i>
+                    <span>Thoát</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN MAP / LOBBY VIEW -->
+    <main id="main-map-view" class="flex-grow flex flex-col items-center justify-center p-4 md:p-6 relative overflow-hidden">
+        
+        <div class="mb-3 text-center flex flex-col items-center gap-1">
+            <span class="bg-slate-900/90 border border-slate-700 text-amber-300 px-4 py-1.5 rounded-full text-xs font-bold shadow flex items-center gap-2">
+                <i class="fa-solid fa-gamepad text-rose-400"></i>
+                <span>Di chuyển bằng phím mũi tên / WASD. Đến cửa phòng và nhấn phím <strong class="bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded">E</strong> để vào!</span>
+            </span>
+            <span id="user-goal-tag" class="text-[11px] text-slate-400"></span>
+        </div>
+
+        <!-- Floorplan Container -->
+        <div id="lobby-container" class="relative w-full max-w-5xl h-[560px] p-2">
+            
+            <!-- AVATAR CHARACTER IN LOBBY -->
+            <div id="character-avatar" style="left: 50%; top: 50%;">
+                <svg id="char-svg-male" class="w-full h-full drop-shadow-xl" viewBox="0 0 60 80">
+                    <rect x="18" y="48" width="10" height="28" fill="#1e293b" rx="3"/>
+                    <rect x="32" y="48" width="10" height="28" fill="#1e293b" rx="3"/>
+                    <path d="M12 24 L48 24 L44 50 L16 50 Z" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+                    <path d="M28 24 L32 24 L31 38 L29 38 Z" fill="#ef4444"/>
+                    <circle cx="30" cy="15" r="11" fill="#fde047"/>
+                    <path d="M18 14 Q30 4 42 14 Q30 8 18 14 Z" fill="#1e1b4b"/>
+                </svg>
+                <svg id="char-svg-female" class="w-full h-full drop-shadow-xl hidden" viewBox="0 0 60 80">
+                    <path d="M15 48 L45 48 L40 68 L20 68 Z" fill="#1e293b"/>
+                    <rect x="20" y="66" width="6" height="12" fill="#fde047"/>
+                    <rect x="34" y="66" width="6" height="12" fill="#fde047"/>
+                    <path d="M14 24 L46 24 L42 48 L18 48 Z" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+                    <path d="M28 24 L32 24 L31 36 L29 36 Z" fill="#ef4444"/>
+                    <circle cx="30" cy="15" r="11" fill="#fde047"/>
+                    <path d="M16 16 Q30 2 44 16 L46 32 L40 32 L42 18 Q30 8 18 18 L20 32 L14 32 Z" fill="#311b92"/>
+                </svg>
+                <div class="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 text-[10px] text-white px-2 py-0.5 rounded-full border border-slate-700 whitespace-nowrap shadow">
+                    <span id="char-nametag">Học sinh</span>
+                </div>
+            </div>
+
+            <!-- INTERACTION PROMPT POPUP -->
+            <div id="interact-prompt" class="absolute hidden z-30 -translate-x-1/2 -translate-y-full mb-3 pointer-events-none">
+                <div class="interact-badge bg-amber-400 text-slate-950 px-3.5 py-1.5 rounded-xl font-extrabold text-xs flex items-center gap-2 border border-white shadow-2xl">
+                    <span class="bg-slate-900 text-white px-1.5 py-0.5 rounded font-mono text-sm">E</span>
+                    <span id="interact-room-name">Nhấn E để vào phòng</span>
+                </div>
+            </div>
+
+            <!-- DYNAMIC ROOMS GRID -->
+            <div id="dynamic-rooms-grid" class="w-full h-full grid grid-cols-2 grid-rows-2 gap-8">
+                <!-- Rooms rendered dynamically via JS -->
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ROOM DETAILS VIEW -->
+    <main id="room-detail-view" class="hidden flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 flex-col">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6 bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+            <div class="flex items-center gap-4">
+                <button onclick="backToMap()" class="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold transition">
+                    <i class="fa-solid fa-chevron-left"></i>
+                    <span>Trở về Sảnh Chính</span>
+                </button>
+                <div>
+                    <h2 id="room-view-title" class="text-2xl font-bold text-white">Tên Phòng</h2>
+                    <p id="room-view-subtitle" class="text-xs text-slate-400">Danh mục tài liệu đọc trực tuyến</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="room-search-input" oninput="renderBooks()" placeholder="Tìm tên sách, tác giả..." class="bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg pl-9 pr-4 py-2 focus:outline-none focus:border-rose-500 w-60">
+                </div>
+
+                <button id="admin-add-book-btn" onclick="openAddBookModal()" class="hidden bg-emerald-600 hover:bg-emerald-500 text-white text-sm px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow">
+                    <i class="fa-solid fa-file-circle-plus"></i>
+                    <span>Thêm file Sách (Admin)</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="books-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+            <!-- Books rendered here -->
+        </div>
+
+        <div id="empty-books-msg" class="hidden text-center py-20 bg-slate-900/40 rounded-2xl border border-slate-800/80 my-auto">
+            <i class="fa-solid fa-book-open text-5xl text-slate-600 mb-3"></i>
+            <p class="text-slate-400 text-lg font-medium">Chưa có sách nào trong phòng này.</p>
+        </div>
+    </main>
+
+    <!-- FOOTER STATUS BAR -->
+    <footer class="bg-[#080d18] border-t border-slate-800/80 px-4 py-2 text-xs text-slate-400">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
+            <div>
+                <span>Novashelf- Thư viện số</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <span>Chế độ: <strong id="mode-badge" class="text-cyan-400">Học sinh</strong></span>
+                <span>•</span>
+                <span>Trạng thái sảnh: <strong class="text-emerald-400">Đang hoạt động</strong></span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODAL: ADMIN ROOM MANAGER -->
+    <div id="room-manager-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-emerald-400"></i>
+                    <span>Quản Lý Cấu Trúc Phòng</span>
+                </h3>
+                <button onclick="closeModal('room-manager-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form onsubmit="handleSaveRoom(event)" class="space-y-3.5 text-xs pb-4 border-b border-slate-800">
+                <h4 class="font-bold text-slate-200 flex items-center gap-1.5"><i class="fa-solid fa-plus text-emerald-400"></i> Thêm Phòng Mới</h4>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Tên Phòng *</label>
+                    <input type="text" id="rm-title" required placeholder="Ví dụ: Lịch Sử Thế Giới" class="w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Mô tả ngắn *</label>
+                    <input type="text" id="rm-subtitle" required placeholder="Ví dụ: Các thời kỳ lịch sử & văn minh nhân loại" class="w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Màu nền phòng *</label>
+                        <input type="color" id="rm-color" value="#1e3a5f" class="w-full h-9 bg-slate-950 border border-slate-700 rounded-lg p-1 cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Màu viền ngoài *</label>
+                        <input type="color" id="rm-border-color" value="#ff4d6d" class="w-full h-9 bg-slate-950 border border-slate-700 rounded-lg p-1 cursor-pointer">
+                    </div>
+                </div>
+                <button type="submit" class="w-full py-2 rounded-lg font-bold bg-emerald-600 text-white hover:bg-emerald-500">Tạo Phòng Mới</button>
+            </form>
+
+            <div class="mt-4 space-y-2 text-xs">
+                <h4 class="font-bold text-slate-200">Danh Sách Phòng Hiện Tại (Đổi Màu / Xóa):</h4>
+                <div id="admin-rooms-list" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CHARACTER CUSTOMIZATION -->
+    <div id="char-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-sm w-full rounded-2xl p-6 border border-slate-700 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-md font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-user-gear text-purple-400"></i>
+                    <span>Tùy Chỉnh Nhân Vật</span>
+                </h3>
+                <button onclick="closeModal('char-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1.5">Giới tính nhân vật</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="setGender('male')" id="btn-gender-male" class="bg-blue-600 border border-blue-400 text-white p-2.5 rounded-xl font-bold flex items-center justify-center gap-2">
+                            <span>👦 Nam</span>
+                        </button>
+                        <button onclick="setGender('female')" id="btn-gender-female" class="bg-slate-800 border border-slate-700 text-slate-300 p-2.5 rounded-xl font-bold flex items-center justify-center gap-2">
+                            <span>👧 Nữ</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                    <p class="text-[11px] text-slate-400 leading-relaxed">
+                        👕 <strong>Trang phục mặc định:</strong> Áo sơ mi trắng đồng phục học sinh, đeo khăn quàng đỏ. Nam mặc quần tây tối màu, Nữ mặc chân váy học sinh.
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-5">
+                <button onclick="closeModal('char-modal')" class="w-full py-2 rounded-lg text-xs font-semibold bg-purple-600 text-white hover:bg-purple-500">Lưu Thay Đổi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: LEADERBOARD (STREAK) -->
+    <div id="leaderboard-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-slate-700 shadow-2xl flex flex-col h-[520px]">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-md font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-trophy text-amber-400"></i>
+                    <span>Bảng Xếp Hạng Streak Đọc Sách</span>
+                </h3>
+                <button onclick="closeModal('leaderboard-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="flex border-b border-slate-800 mb-3 text-xs">
+                <button id="lb-tab-all" onclick="filterLeaderboard('all')" class="flex-1 py-2 font-bold text-amber-400 border-b-2 border-amber-400 text-center">🏆 Toàn Trường</button>
+                <button id="lb-tab-class" onclick="filterLeaderboard('class')" class="flex-1 py-2 font-semibold text-slate-400 hover:text-white text-center">🏫 Cùng Lớp</button>
+            </div>
+
+            <div id="leaderboard-list" class="flex-grow overflow-y-auto space-y-2 pr-1"></div>
+        </div>
+    </div>
+
+    <!-- MODAL: IN-GAME READER WITH 15-MIN STREAK TIMER -->
+    <div id="read-book-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-3 md:p-6">
+        <div class="glass-panel max-w-5xl w-full h-[90vh] rounded-2xl p-4 md:p-6 border border-slate-700 shadow-2xl relative flex flex-col">
+            
+            <div class="flex flex-wrap justify-between items-center pb-3 border-b border-slate-800 gap-2">
+                <div class="flex items-center gap-3">
+                    <button onclick="closeModal('read-book-modal')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-8 h-8 rounded-lg flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+                    <div>
+                        <h3 id="modal-book-title" class="text-base font-bold text-white line-clamp-1">Tên Sách</h3>
+                        <p id="modal-book-author" class="text-xs text-rose-300">Tác giả</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-1.5 flex items-center gap-3 shadow">
+                    <span class="text-xs text-slate-400 font-medium">Thời gian đọc tích lũy:</span>
+                    <div class="flex items-center gap-1.5 font-mono text-sm font-bold text-orange-400">
+                        <i class="fa-solid fa-stopwatch animate-pulse"></i>
+                        <span id="streak-timer-display">15:00</span>
+                    </div>
+                    <span id="timer-status-badge" class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30 font-semibold">Chưa hoàn thành</span>
+                </div>
+            </div>
+
+            <div class="flex-grow bg-slate-950 border border-slate-800 rounded-xl my-3 overflow-hidden relative">
+                <iframe id="book-iframe-viewer" src="" class="w-full h-full border-0"></iframe>
+            </div>
+
+            <div class="flex justify-between items-center text-xs text-slate-400 pt-1">
+                <span>💡 Đọc đủ 15 phút trong game để tự động tích lũy +1 ngày Streak!</span>
+                <div id="modal-admin-actions" class="hidden">
+                    <button id="modal-delete-btn" class="bg-rose-600 hover:bg-rose-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5">
+                        <i class="fa-solid fa-trash-can"></i> Xoá sách
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADMIN LOGIN -->
+    <div id="admin-login-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-slate-700 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-user-shield text-amber-400"></i>
+                    <span>Đăng Nhập Quyền Admin</span>
+                </h3>
+                <button onclick="closeModal('admin-login-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <p class="text-xs text-slate-300 mb-4">Vui lòng nhập mật khẩu quản trị viên để mở quyền cấu hình thư viện.</p>
+            
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Mật khẩu xác thực</label>
+                <input type="password" id="admin-password-input" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-amber-500 text-sm">
+                <p id="admin-login-error" class="text-rose-400 text-xs mt-1 hidden"><i class="fa-solid fa-circle-exclamation"></i> Mật khẩu không chính xác!</p>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button onclick="closeModal('admin-login-modal')" class="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">Hủy</button>
+                <button onclick="submitAdminLogin()" class="px-4 py-2 rounded-lg text-xs font-semibold bg-amber-600 text-white hover:bg-amber-500">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD NEW BOOK (ADMIN) -->
+    <div id="add-book-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-file-circle-plus text-emerald-400"></i>
+                    <span>Thêm File Sách Mới (Admin)</span>
+                </h3>
+                <button onclick="closeModal('add-book-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="add-book-form" onsubmit="saveNewBook(event)" class="space-y-3.5 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Tên sách / Tài liệu *</label>
+                    <input type="text" id="new-title" required placeholder="Ví dụ: Tắt Đèn - Ngô Tất Tố" class="w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Tác giả *</label>
+                    <input type="text" id="new-author" required placeholder="Tên tác giả" class="w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Phòng Sách *</label>
+                    <select id="new-category" required class="w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"></select>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Link Bìa Sách (URL ảnh)</label>
+                    <input type="url" id="new-cover" placeholder="https://..." class="w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Link File Đọc Sách *</label>
+                    <input type="text" id="new-file-url" required placeholder="https://..." class="w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Mô tả ngắn</label>
+                    <textarea id="new-desc" rows="3" placeholder="Tóm tắt nội dung..." class="w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                    <button type="button" onclick="closeModal('add-book-modal')" class="px-4 py-2 rounded-lg font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">Hủy</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg font-semibold bg-emerald-600 text-white hover:bg-emerald-500">Thêm Vô Thư Viện</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: CHAT -->
+    <div id="chat-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-slate-700 shadow-2xl flex flex-col h-[500px]">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-800">
+                <h3 class="text-md font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-comments text-blue-400"></i>
+                    <span>Trợ Lý Thư Viện Ảo (Novashelf AI)</span>
+                </h3>
+                <button onclick="closeModal('chat-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div id="chat-messages" class="flex-grow overflow-y-auto space-y-3 p-2 text-xs">
+                <div class="bg-slate-800/80 text-slate-200 p-3 rounded-xl max-w-[85%] border border-slate-700/60">
+                    👋 Xin chào! Bạn đang tìm sách thuộc thể loại nào hôm nay? Hãy nhập tên tài liệu hoặc câu hỏi nhé!
+                </div>
+            </div>
+
+            <div class="mt-3 flex gap-2">
+                <input type="text" id="chat-input" onkeydown="if(event.key==='Enter') sendChatMessage()" placeholder="Hỏi tìm sách..." class="flex-grow bg-slate-950 border border-slate-700 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
+                <button onclick="sendChatMessage()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-4 py-2 rounded-lg font-semibold">Gửi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SUGGEST BOOK -->
+    <div id="suggest-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-slate-700 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-md font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-lightbulb text-emerald-400"></i>
+                    <span>Đề Xuất Bổ Sung Sách Mới</span>
+                </h3>
+                <button onclick="closeModal('suggest-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <input type="text" id="suggest-title" placeholder="Tên cuốn sách (kèm tác giả) mong muốn..." class="w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
+                <textarea id="suggest-reason" rows="3" placeholder="Lý do hoặc link tham khảo (nếu có)..." class="w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"></textarea>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-4">
+                <button onclick="closeModal('suggest-modal')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300">Hủy</button>
+                <button onclick="submitSuggestion()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500">Gửi Đề Xuất</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        let currentUser = null;
+        let isAdmin = false;
+        let currentRoom = null;
+        let userStreak = 1;
+        let playerGender = 'male';
+
+        let streakTimerInterval = null;
+        let secondsRemaining = 15 * 60;
+        let isStreakClaimedToday = false;
+
+        const initialRooms = [
+            { id: 'van-hoc', title: 'Văn Học Việt Nam', subtitle: 'Truyện ngắn, tiểu thuyết, thi ca & văn học dân gian', color: '#1e3a5f', borderColor: '#ff4d6d', icon: 'fa-book-bookmark' },
+            { id: 'khoa-hoc', title: 'Khoa Học & Thiên Văn', subtitle: 'Vũ trụ, vật lý, sinh học & công nghệ tương lai', color: '#4a2c3a', borderColor: '#ff4d6d', icon: 'fa-user-astronaut' },
+            { id: 'ngoai-ngu', title: 'Ngoại Ngữ', subtitle: 'Tiếng Anh, Tiếng Trung,...Cấu trúc ngữ pháp', color: '#3f3328', borderColor: '#ff4d6d', icon: 'fa-language' },
+            { id: 'ky-nang', title: 'Kỹ Năng Sống', subtitle: 'Tư duy phản biện, giao tiếp, tâm lý & phát triển bản thân', color: '#163024', borderColor: '#ff4d6d', icon: 'fa-seedling' }
+        ];
+
+        function getStoredRooms() {
+            const data = localStorage.getItem('novashelf_rooms_config');
+            if (!data) {
+                localStorage.setItem('novashelf_rooms_config', JSON.stringify(initialRooms));
+                return initialRooms;
+            }
+            return JSON.parse(data);
+        }
+
+        function saveStoredRooms(rooms) {
+            localStorage.setItem('novashelf_rooms_config', JSON.stringify(rooms));
+            renderRoomsGrid();
+            renderAdminRoomsList();
+        }
+
+        const initialBooks = [
+            { id: 'vh-1', title: 'Dế Mèn Phiêu Lưu Ký', author: 'Tô Hoài', category: 'van-hoc', cover: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80', fileUrl: 'https://vi.wikipedia.org/wiki/D%E1%BA%BF_M%C3%A8n_phi%C3%AAu_l%C6%B0u_k%C3%BD', desc: 'Tác phẩm văn học thiếu nhi kinh điển.' },
+            { id: 'vh-2', title: 'Số Đỏ', author: 'Vũ Trọng Phụng', category: 'van-hoc', cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&q=80', fileUrl: 'https://vi.wikipedia.org/wiki/S%E1%BB%91_%C4%91%E1%BB%8F_(ti%E1%BB%83u_thuy%E1%BA%BFt)', desc: 'Tiểu thuyết trào phúng xuất sắc.' },
+            { id: 'kh-1', title: 'Vũ Trụ (Cosmos)', author: 'Carl Sagan', category: 'khoa-hoc', cover: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&q=80', fileUrl: 'https://vi.wikipedia.org/wiki/Cosmos_(s%C3%A1ch)', desc: 'Khám phá 15 tỷ năm tiến hóa vũ trụ.' },
+            { id: 'nn-1', title: 'English Grammar in Use', author: 'Raymond Murphy', category: 'ngoai-ngu', cover: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&q=80', fileUrl: 'https://en.wikipedia.org/wiki/English_Grammar_in_Use', desc: 'Tài liệu ngữ pháp Tiếng Anh chuẩn.' },
+            { id: 'kn-1', title: 'Đắc Nhân Tâm', author: 'Dale Carnegie', category: 'ky-nang', cover: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&q=80', fileUrl: 'https://vi.wikipedia.org/wiki/%C2%90%E1%BA%AFc_nh%C3%A2n_t%C3%A2m', desc: 'Nghệ thuật ứng xử.' }
+        ];
+
+        function getStoredBooks() {
+            const data = localStorage.getItem('novashelf_books_data');
+            if (!data) {
+                localStorage.setItem('novashelf_books_data', JSON.stringify(initialBooks));
+                return initialBooks;
+            }
+            return JSON.parse(data);
+        }
+
+        function saveStoredBooks(books) {
+            localStorage.setItem('novashelf_books_data', JSON.stringify(books));
+            updateRoomCounts();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderRoomsGrid();
+            setupPlayerMovement();
+        });
+
+        // 1. AUTH SUBMISSION LOGIC
+        function handleAuthSubmit(e) {
+            e.preventDefault();
+            const name = document.getElementById('auth-name').value.trim();
+            const userClass = document.getElementById('auth-class').value.trim();
+            const pass = document.getElementById('auth-pass').value.trim();
+
+            if (!name || !userClass || !pass) return;
+
+            const userId = `user_${name}_${userClass}`;
+            let storedUser = JSON.parse(localStorage.getItem(userId));
+
+            if (storedUser) {
+                if (storedUser.pass !== pass) {
+                    alert('❌ Mật khẩu không chính xác cho tài khoản này!');
+                    return;
+                }
+                currentUser = storedUser;
+            } else {
+                currentUser = {
+                    id: userId,
+                    name: name,
+                    class: userClass,
+                    pass: pass,
+                    streak: 1,
+                    isAdmin: (pass === '12151215')
+                };
+                localStorage.setItem(userId, JSON.stringify(currentUser));
+            }
+
+            // Check admin status
+            if (pass === '12151215') {
+                isAdmin = true;
+                currentUser.isAdmin = true;
+            }
+
+            userStreak = currentUser.streak;
+            document.getElementById('user-display-name').innerText = `${currentUser.name} (${currentUser.class})`;
+            document.getElementById('char-nametag').innerText = currentUser.name;
+            document.getElementById('user-streak').innerText = userStreak;
+
+            document.getElementById('auth-modal').classList.add('hidden');
+            document.getElementById('survey-modal').classList.remove('hidden');
+
+            updateAdminUI();
+        }
+
+        // 2. DAILY SURVEY SUBMISSION LOGIC
+        function handleSurveySubmit(e) {
+            e.preventDefault();
+            const interest = document.getElementById('survey-interest').value;
+            const goal = document.getElementById('survey-goal').value;
+
+            document.getElementById('user-goal-tag').innerHTML = `🎯Tôi nghĩ hôm nay bạn nên tham khảo: <strong class="text-amber-300">${interest}</strong> (${goal})`;
+            document.getElementById('survey-modal').classList.add('hidden');
+        }
+
+        function logout() {
+            location.reload();
+        }
+
+        // RENDER ROOMS GRID
+        function renderRoomsGrid() {
+            const grid = document.getElementById('dynamic-rooms-grid');
+            const rooms = getStoredRooms();
+            grid.innerHTML = '';
+
+            rooms.forEach((r, idx) => {
+                const card = document.createElement('div');
+                card.id = `room-card-${r.id}`;
+                card.className = 'room-card group';
+                card.style.backgroundColor = r.color;
+                card.style.borderColor = r.borderColor || '#ff4d6d';
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="bg-white/10 text-white text-[11px] px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider">Phòng ${idx + 1}</span>
+                            <h2 class="text-xl font-bold text-white mt-2">${r.title}</h2>
+                            <p class="text-xs text-slate-200/80 mt-1 line-clamp-2">${r.subtitle}</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white text-lg">
+                            <i class="fa-solid ${r.icon || 'fa-book'}"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between mt-auto">
+                        <span class="text-xs font-semibold text-slate-200 bg-black/30 px-3 py-1.5 rounded-lg">
+                            📚 <span id="count-${r.id}">0</span> đầu sách
+                        </span>
+                        <span class="text-xs text-amber-300 font-bold flex items-center gap-1">
+                            <i class="fa-solid fa-door-open"></i> Đến gần cửa & bấm E
+                        </span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            updateRoomCounts();
+        }
+
+        // RPG PLAYER MOVEMENT & INTERACTION LOGIC
+        let posX = 50, posY = 50;
+        let activeInteractRoom = null;
+
+        function setupPlayerMovement() {
+            const avatar = document.getElementById('character-avatar');
+
+            window.addEventListener('keydown', (e) => {
+                if (currentRoom || document.querySelectorAll('.fixed:not(.hidden)').length > 0) return;
+
+                const step = 4;
+                if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') posY = Math.max(8, posY - step);
+                if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') posY = Math.min(92, posY + step);
+                if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') posX = Math.max(8, posX - step);
+                if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') posX = Math.min(92, posX + step);
+
+                avatar.style.left = `${posX}%`;
+                avatar.style.top = `${posY}%`;
+
+                checkRoomProximity();
+
+                if ((e.key === 'e' || e.key === 'E') && activeInteractRoom) {
+                    enterRoom(activeInteractRoom.id);
+                }
+            });
+        }
+
+        function checkRoomProximity() {
+            const rooms = getStoredRooms();
+            const interactPrompt = document.getElementById('interact-prompt');
+            let foundNear = null;
+
+            rooms.forEach(r => {
+                const el = document.getElementById(`room-card-${r.id}`);
+                if (el) el.classList.remove('room-near');
+            });
+
+            rooms.forEach((r, idx) => {
+                let near = false;
+                if (idx === 0 && posX < 48 && posY < 48) near = true;
+                if (idx === 1 && posX > 52 && posY < 48) near = true;
+                if (idx === 2 && posX < 48 && posY > 52) near = true;
+                if (idx === 3 && posX > 52 && posY > 52) near = true;
+                if (idx >= 4) near = true;
+
+                if (near) {
+                    foundNear = r;
+                    const el = document.getElementById(`room-card-${r.id}`);
+                    if (el) el.classList.add('room-near');
+                }
+            });
+
+            if (foundNear) {
+                activeInteractRoom = foundNear;
+                interactPrompt.classList.remove('hidden');
+                interactPrompt.style.left = `${posX}%`;
+                interactPrompt.style.top = `${posY}%`;
+                document.getElementById('interact-room-name').innerText = `Nhấn E vào ${foundNear.title}`;
+            } else {
+                activeInteractRoom = null;
+                interactPrompt.classList.add('hidden');
+            }
+        }
+
+        function setGender(gender) {
+            playerGender = gender;
+            const maleSvg = document.getElementById('char-svg-male');
+            const femaleSvg = document.getElementById('char-svg-female');
+            const btnMale = document.getElementById('btn-gender-male');
+            const btnFemale = document.getElementById('btn-gender-female');
+
+            if (gender === 'female') {
+                maleSvg.classList.add('hidden');
+                femaleSvg.classList.remove('hidden');
+                btnFemale.className = 'bg-pink-600 border border-pink-400 text-white p-2.5 rounded-xl font-bold flex items-center justify-center gap-2';
+                btnMale.className = 'bg-slate-800 border border-slate-700 text-slate-300 p-2.5 rounded-xl font-bold flex items-center justify-center gap-2';
+            } else {
+                femaleSvg.classList.add('hidden');
+                maleSvg.classList.remove('hidden');
+                btnMale.className = 'bg-blue-600 border border-blue-400 text-white p-2.5 rounded-xl font-bold flex items-center justify-center gap-2';
+                btnFemale.className = 'bg-slate-800 border border-slate-700 text-slate-300 p-2.5 rounded-xl font-bold flex items-center justify-center gap-2';
+            }
+        }
+
+        // ROOM & BOOK SYSTEM
+        function enterRoom(roomId) {
+            currentRoom = roomId;
+            document.getElementById('interact-prompt').classList.add('hidden');
+            document.getElementById('main-map-view').classList.add('hidden');
+            
+            const roomView = document.getElementById('room-detail-view');
+            roomView.classList.remove('hidden');
+            roomView.classList.add('flex');
+
+            const rooms = getStoredRooms();
+            const r = rooms.find(item => item.id === roomId);
+            document.getElementById('room-view-title').innerText = r ? r.title : 'Phòng Sách';
+            document.getElementById('room-search-input').value = '';
+            renderBooks();
+        }
+
+        function backToMap() {
+            currentRoom = null;
+            document.getElementById('room-detail-view').classList.add('hidden');
+            document.getElementById('room-detail-view').classList.remove('flex');
+            document.getElementById('main-map-view').classList.remove('hidden');
+            updateRoomCounts();
+        }
+
+        function updateRoomCounts() {
+            const books = getStoredBooks();
+            const rooms = getStoredRooms();
+            rooms.forEach(r => {
+                const cnt = books.filter(b => b.category === r.id).length;
+                const el = document.getElementById(`count-${r.id}`);
+                if (el) el.innerText = cnt;
+            });
+        }
+
+        function renderBooks() {
+            if (!currentRoom) return;
+
+            const query = document.getElementById('room-search-input').value.toLowerCase().trim();
+            const allBooks = getStoredBooks();
+            const roomBooks = allBooks.filter(b => b.category === currentRoom && 
+                (b.title.toLowerCase().includes(query) || b.author.toLowerCase().includes(query))
+            );
+
+            const grid = document.getElementById('books-grid');
+            const emptyMsg = document.getElementById('empty-books-msg');
+            grid.innerHTML = '';
+
+            if (roomBooks.length === 0) {
+                emptyMsg.classList.remove('hidden');
+                return;
+            } else {
+                emptyMsg.classList.add('hidden');
+            }
+
+            roomBooks.forEach(book => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden hover:border-slate-600 transition group flex flex-col justify-between p-3 relative shadow-lg";
+
+                card.innerHTML = `
+                    <div>
+                        <div class="relative w-full h-48 rounded-lg overflow-hidden mb-3 bg-slate-950">
+                            <img src="${book.cover || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400&q=80'}" alt="${book.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                            ${isAdmin ? `<button onclick="deleteBookDirect('${book.id}', event)" title="Xoá sách (Admin)" class="absolute top-2 right-2 bg-rose-600 hover:bg-rose-500 text-white w-7 h-7 rounded-full flex items-center justify-center text-xs shadow"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+                        </div>
+                        <h4 class="font-bold text-sm text-slate-100 line-clamp-1 group-hover:text-rose-300 transition">${book.title}</h4>
+                        <p class="text-xs text-slate-400 mt-0.5 line-clamp-1">✍️ ${book.author}</p>
+                    </div>
+
+                    <div class="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                        <button onclick="openReadModal('${book.id}')" class="w-full bg-slate-800 hover:bg-rose-600/30 hover:border-rose-500/50 border border-slate-700 text-xs font-semibold py-1.5 rounded-lg text-slate-200 transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-book-open text-rose-400"></i> Đọc Trực Tiếp
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // READER & TIMER
+        function openReadModal(bookId) {
+            const books = getStoredBooks();
+            const book = books.find(b => b.id === bookId);
+            if (!book) return;
+
+            document.getElementById('modal-book-title').innerText = book.title;
+            document.getElementById('modal-book-author').innerText = 'Tác giả: ' + book.author;
+            document.getElementById('book-iframe-viewer').src = book.fileUrl;
+
+            const adminActions = document.getElementById('modal-admin-actions');
+            if (isAdmin) {
+                adminActions.classList.remove('hidden');
+                document.getElementById('modal-delete-btn').onclick = () => {
+                    deleteBook(book.id);
+                    closeModal('read-book-modal');
+                };
+            } else {
+                adminActions.classList.add('hidden');
+            }
+
+            startStreakTimer();
+            openModal('read-book-modal');
+        }
+
+        function startStreakTimer() {
+            clearInterval(streakTimerInterval);
+            secondsRemaining = 15 * 60;
+            updateTimerDisplay();
+
+            streakTimerInterval = setInterval(() => {
+                secondsRemaining--;
+                updateTimerDisplay();
+
+                if (secondsRemaining <= 0) {
+                    clearInterval(streakTimerInterval);
+                    if (!isStreakClaimedToday) {
+                        isStreakClaimedToday = true;
+                        userStreak += 1;
+                        
+                        if (currentUser) {
+                            currentUser.streak = userStreak;
+                            localStorage.setItem(currentUser.id, JSON.stringify(currentUser));
+                        }
+
+                        document.getElementById('user-streak').innerText = userStreak;
+                        alert('🎉 BẠN ĐÃ ĐỌC ĐỦ 15 PHÚT!\n\nNhận thêm +1 Ngày Streak thành công!');
+                    }
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(secondsRemaining / 60);
+            const secs = secondsRemaining % 60;
+            document.getElementById('streak-timer-display').innerText = 
+                `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // LEADERBOARD
+        function openLeaderboard() {
+            filterLeaderboard('all');
+            openModal('leaderboard-modal');
+        }
+
+        function filterLeaderboard(type) {
+            const list = document.getElementById('leaderboard-list');
+            const leaderboardData = [
+                { name: currentUser ? currentUser.name : 'Bạn', class: currentUser ? currentUser.class : '10A1', streak: userStreak, avatar: '👦', isSelf: true },
+        
+            ];
+
+            const filtered = leaderboardData.filter(u => type === 'all' || u.class === (currentUser ? currentUser.class : ''));
+            filtered.sort((a, b) => b.streak - a.streak);
+
+            list.innerHTML = '';
+            filtered.forEach((u, idx) => {
+                const item = document.createElement('div');
+                item.className = `p-3 rounded-xl border flex items-center justify-between text-xs ${u.isSelf ? 'bg-amber-500/10 border-amber-500/40' : 'bg-slate-900/80 border-slate-800'}`;
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="font-bold w-5 text-center ${idx===0?'text-amber-400':(idx===1?'text-slate-300':'text-slate-500')}">#${idx+1}</span>
+                        <span class="text-lg">${u.avatar}</span>
+                        <div>
+                            <div class="font-bold text-slate-200">${u.name} ${u.isSelf ? '(Bạn)' : ''}</div>
+                            <div class="text-[10px] text-slate-400">Lớp: ${u.class}</div>
+                        </div>
+                    </div>
+                    <div class="font-bold text-orange-400">🔥 ${u.streak} ngày</div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        // ADMIN ROOM MANAGMENT
+        function handleSaveRoom(e) {
+            e.preventDefault();
+            if (!isAdmin) return;
+
+            const title = document.getElementById('rm-title').value.trim();
+            const subtitle = document.getElementById('rm-subtitle').value.trim();
+            const color = document.getElementById('rm-color').value;
+            const borderColor = document.getElementById('rm-border-color').value;
+
+            const rooms = getStoredRooms();
+            const newRoom = {
+                id: 'room-' + Date.now(),
+                title, subtitle, color, borderColor, icon: 'fa-book-open'
+            };
+
+            rooms.push(newRoom);
+            saveStoredRooms(rooms);
+            closeModal('room-manager-modal');
+            alert('✅ Tạo phòng mới thành công!');
+        }
+
+        function updateRoomColor(roomId, newColor, newBorderColor) {
+            if (!isAdmin) return;
+            const rooms = getStoredRooms();
+            const r = rooms.find(item => item.id === roomId);
+            if (r) {
+                if (newColor) r.color = newColor;
+                if (newBorderColor) r.borderColor = newBorderColor;
+                saveStoredRooms(rooms);
+            }
+        }
+
+        function deleteRoom(roomId) {
+            if (!isAdmin) return;
+            if (confirm('⚠️ Bạn có chắc muốn xoá phòng này?')) {
+                let rooms = getStoredRooms();
+                rooms = rooms.filter(r => r.id !== roomId);
+                saveStoredRooms(rooms);
+            }
+        }
+
+        function renderAdminRoomsList() {
+            const list = document.getElementById('admin-rooms-list');
+            if (!list) return;
+            const rooms = getStoredRooms();
+            list.innerHTML = '';
+
+            rooms.forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between gap-2';
+                div.innerHTML = `
+                    <div>
+                        <strong class="text-slate-200">${r.title}</strong>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-[10px] text-slate-400">Màu nền:</label>
+                        <input type="color" value="${r.color}" onchange="updateRoomColor('${r.id}', this.value, null)" class="w-6 h-6 bg-transparent cursor-pointer">
+                        <label class="text-[10px] text-slate-400">Màu viền:</label>
+                        <input type="color" value="${r.borderColor || '#ff4d6d'}" onchange="updateRoomColor('${r.id}', null, this.value)" class="w-6 h-6 bg-transparent cursor-pointer">
+                        <button onclick="deleteRoom('${r.id}')" class="bg-rose-600 text-white px-2 py-1 rounded text-[10px] font-bold"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+
+            const catSelect = document.getElementById('new-category');
+            if (catSelect) {
+                catSelect.innerHTML = '';
+                rooms.forEach(r => {
+                    catSelect.innerHTML += `<option value="${r.id}">${r.title}</option>`;
+                });
+            }
+        }
+
+        // ADMIN AUTH
+        function handleAdminClick() {
+            if (isAdmin) {
+                isAdmin = false;
+                updateAdminUI();
+                alert('Đã đăng xuất Admin.');
+            } else {
+                document.getElementById('admin-password-input').value = '';
+                document.getElementById('admin-login-error').classList.add('hidden');
+                openModal('admin-login-modal');
+            }
+        }
+
+        function submitAdminLogin() {
+            const pwd = document.getElementById('admin-password-input').value;
+            if (pwd === '12151215') {
+                isAdmin = true;
+                closeModal('admin-login-modal');
+                updateAdminUI();
+                alert('🔑 Đăng nhập Admin thành công!');
+            } else {
+                document.getElementById('admin-login-error').classList.remove('hidden');
+            }
+        }
+
+        function updateAdminUI() {
+            const adminBtn = document.getElementById('admin-btn');
+            const adminStatusText = document.getElementById('admin-status-text');
+            const modeBadge = document.getElementById('mode-badge');
+            const addBtn = document.getElementById('admin-add-book-btn');
+            const manageRoomsBtn = document.getElementById('admin-manage-rooms-btn');
+
+            if (isAdmin) {
+                adminBtn.className = 'bg-amber-600/30 border border-amber-500/50 text-amber-200 px-3 py-1.5 rounded-lg flex items-center gap-2 font-medium transition shadow';
+                adminStatusText.innerText = 'Admin (Đã đăng nhập)';
+                modeBadge.innerText = 'Quản trị viên (Admin)';
+                modeBadge.className = 'text-amber-400 font-bold';
+                addBtn.classList.remove('hidden');
+                manageRoomsBtn.classList.remove('hidden');
+                renderAdminRoomsList();
+            } else {
+                adminBtn.className = 'bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-2 font-medium transition shadow';
+                adminStatusText.innerText = 'Admin';
+                modeBadge.innerText = 'Học sinh';
+                modeBadge.className = 'text-cyan-400';
+                addBtn.classList.add('hidden');
+                manageRoomsBtn.classList.add('hidden');
+            }
+
+            renderBooks();
+        }
+
+        function openAddBookModal() {
+            if (!isAdmin) return;
+            if (currentRoom) document.getElementById('new-category').value = currentRoom;
+            openModal('add-book-modal');
+        }
+
+        function saveNewBook(e) {
+            e.preventDefault();
+            if (!isAdmin) return;
+
+            const title = document.getElementById('new-title').value.trim();
+            const author = document.getElementById('new-author').value.trim();
+            const category = document.getElementById('new-category').value;
+            const cover = document.getElementById('new-cover').value.trim();
+            const fileUrl = document.getElementById('new-file-url').value.trim();
+            const desc = document.getElementById('new-desc').value.trim();
+
+            const newBook = {
+                id: 'custom-' + Date.now(),
+                title, author, category,
+                cover: cover || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400&q=80',
+                fileUrl, desc
+            };
+
+            const books = getStoredBooks();
+            books.unshift(newBook);
+            saveStoredBooks(books);
+
+            closeModal('add-book-modal');
+            document.getElementById('add-book-form').reset();
+            renderBooks();
+            alert('✅ Thêm sách mới thành công!');
+        }
+
+        function deleteBook(bookId) {
+            if (!isAdmin) return;
+            if (confirm('⚠️ Bạn có chắc muốn xoá sách này?')) {
+                let books = getStoredBooks();
+                books = books.filter(b => b.id !== bookId);
+                saveStoredBooks(books);
+                renderBooks();
+            }
+        }
+
+        function deleteBookDirect(bookId, event) {
+            event.stopPropagation();
+            deleteBook(bookId);
+        }
+
+        // UTILITY HELPERS
+        function openModal(id) { 
+            document.getElementById(id).classList.remove('hidden'); 
+            if (id === 'room-manager-modal') renderAdminRoomsList();
+        }
+
+        function closeModal(id) { 
+            document.getElementById(id).classList.add('hidden'); 
+            if (id === 'read-book-modal') {
+                clearInterval(streakTimerInterval);
+                document.getElementById('book-iframe-viewer').src = '';
+            }
+        }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const chatMessages = document.getElementById('chat-messages');
+            const uDiv = document.createElement('div');
+            uDiv.className = 'bg-blue-600 text-white p-3 rounded-xl max-w-[80%] ml-auto font-medium';
+            uDiv.innerText = text;
+            chatMessages.appendChild(uDiv);
+            input.value = '';
+
+            setTimeout(() => {
+                const bDiv = document.createElement('div');
+                bDiv.className = 'bg-slate-800/80 text-slate-200 p-3 rounded-xl max-w-[85%] border border-slate-700/60';
+                bDiv.innerText = `🤖 Bạn hãy di chuyển nhân vật đến cửa phòng và bấm E để chọn sách trực tiếp nhé!`;
+                chatMessages.appendChild(bDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 600);
+        }
+
+        function submitSuggestion() {
+            alert('🎉 Đã gửi đề xuất thành công!');
+            document.getElementById('suggest-title').value = '';
+            document.getElementById('suggest-reason').value = '';
+            closeModal('suggest-modal');
+        }
+    </script>
+</body>
+</html>
